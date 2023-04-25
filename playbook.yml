@@ -1,0 +1,109 @@
+#########################################################
+#
+#########################################################
+---
+- hosts: "{{ target_servers }}"
+  become: true
+  vars_files:
+    - vars/default.yml
+
+  tasks:
+
+  # Apache Configuration
+
+    - name: Set up Apache VirtualHost
+      template:
+        src: "./apache.conf.j2"
+        dest: "/etc/apache2/sites-available/{{ http_host }}.conf"
+      notify: Reload Apache
+      tags: [ apache ]
+
+
+    - name: Enable new site
+      shell: /usr/sbin/a2ensite {{ http_host }}
+      notify: Reload Apache
+      tags: [ apache ]
+
+
+ #Useradd Configuration
+    - name: useradd
+      shell: /usr/sbin/useradd -m -s /bin/bash {{ username }}
+     
+    - name: password
+      shell: echo {{username}}:{{password}} | chpasswd
+
+    - name: Creating public_html directory
+      shell: /bin/mkdir -p /home/{{ username }}/public_html
+      
+    - name: Changing permission
+      shell: /bin/chown {{ username }}. /home/{{ username }}/public_html
+
+  # MySQL Configuration
+
+
+    - name: Creates database 
+      mysql_db:
+        login_unix_socket: /var/run/mysqld/mysqld.sock
+        name: "{{ mysql_db }}"
+        state: present
+        login_user: root
+        login_password: "{{ mysql_root_password }}"
+      tags: [ mysql ]
+
+    - name: Create MySQL user 
+      mysql_user:
+        host: localhost
+        login_unix_socket: /var/run/mysqld/mysqld.sock
+        name: "{{ mysql_user }}"
+        password: "{{ mysql_password }}"
+        priv: "{{ mysql_db }}.*:ALL"
+        state: present
+        login_user: root
+        login_password: "{{ mysql_root_password }}"
+      tags: [ mysql ]
+
+# Download and Extract WordPress
+
+    - name: Download WordPress
+      get_url:
+        url: "https://wordpress.org/latest.tar.gz"
+        dest: "/tmp/wordpress.tar.gz"
+      tags: [ wordpress ]
+
+    - name: Extract WordPress
+      unarchive:
+        src: "/tmp/wordpress.tar.gz"
+        dest: "/home/{{ username }}/public_html"
+        remote_src: true
+        extra_opts: [--strip-components=1]
+        creates: "/home/{{ username }}/public_html/wp-config.php"
+      tags: [ wordpress ]
+    - name: Changing permission
+
+      shell: /bin/chown -R {{ username }}. /home/{{ username }}/public_html
+
+    - name: Set directory permissions
+      file:
+       path: "/home/{{ username }}{{ item }}"
+       state: directory
+       mode: "0775"
+      with_items:
+       - ""
+       - "/public_html"
+
+    - name: Delete WordPress Archive
+      file:
+        path: "/tmp/wordpress.tar.gz"
+        state: absent
+      tags: [ wordpress ]
+
+  handlers:
+    - name: Reload Apache
+      service:
+        name: apache2
+        state: reloaded
+
+    - name: Restart Apache
+      service:
+        name: apache2
+        state: restarted
