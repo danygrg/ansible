@@ -12,4 +12,6 @@ mysql_password
 
 Shell command
 
+```
 ansible-playbook -i /home/jenkins/ansible/inventory /home/jenkins/ansible/playbook.yml -e "target_servers=$target_servers http_host=$http_host mysql_db=$mysql_db mysql_user=$mysql_user mysql_password=$mysql_password username=$username password=$password" -u ubuntu -v
+```
