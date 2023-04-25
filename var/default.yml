@@ -1,0 +1,19 @@
+---
+#Defining targets
+target_hosts:
+  webserver1: 52.26.138.126
+  webserver2: 54.186.189.175
+
+# Set the IP address based on the selected host
+IP_ADDRESS: "{{ target_hosts[selected_host] }}"
+
+#MySQL Settings
+mysql_root_password: "***********"
+mysql_db: ""
+mysql_user: ""
+mysql_password: ""
+
+#HTTP Settings
+http_host: ""
+http_conf: ""
+http_port: "80"
